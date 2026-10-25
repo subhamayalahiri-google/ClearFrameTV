@@ -38,6 +38,18 @@ adb shell input keyevent KEYCODE_DPAD_DOWN
 shot 7-dock-with-apps 3
 adb logcat -d -s ClearFrame:* > "$OUT/dock-log.txt"
 
+# Hold OK on the dock app: options panel, then Rename it and reset the name.
+adb logcat -c
+adb shell input keyevent --longpress KEYCODE_DPAD_CENTER; shot 7a-app-options 1
+adb shell input keyevent KEYCODE_DPAD_DOWN; adb shell input keyevent KEYCODE_DPAD_CENTER; shot 7b-rename 3
+adb shell input text "Movies"; adb shell input keyevent KEYCODE_ENTER; shot 7c-renamed 2
+adb shell input keyevent --longpress KEYCODE_DPAD_CENTER; adb shell input keyevent KEYCODE_DPAD_DOWN
+adb shell input keyevent KEYCODE_DPAD_DOWN; adb shell input keyevent KEYCODE_DPAD_CENTER; shot 7d-name-reset 2
+adb logcat -d -s ClearFrame:* > "$OUT/rename-log.txt"
+grep -q -- "-> Movies" "$OUT/rename-log.txt" || fail "Rename did not save: $(tail -3 "$OUT/rename-log.txt")"
+grep -q "name reset" "$OUT/rename-log.txt" || fail "Reset name did not run: $(tail -3 "$OUT/rename-log.txt")"
+front | grep -q tv.clearframe.home || fail "Left ClearFrame while renaming: $(front)"
+
 # Clean up TV inside the emulator. Its adbd has no TCP port, so this shows the "can't reach" screen.
 {
   echo "ro.adb.secure=$(adb shell getprop ro.adb.secure | tr -d '\r')"

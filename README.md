@@ -10,7 +10,7 @@ It is a native Android rewrite. CleanFrame itself is a Samsung Tizen web app and
 - 12-hour clock, top left.
 - Dock of apps: YouTube, Netflix, Prime Video and StbEmu (free or pro, whichever is installed). Left/Right moves, OK opens.
 - Up reaches three controls: Next wallpaper, All apps, Settings.
-- All apps: OK opens an app; hold OK to add it to the dock or remove it.
+- Hold OK on an app (dock or All apps) for options: add to or remove from the dock, rename it (the name shows only in ClearFrame), reset the name.
 - Settings → Clean up TV: connects to the TV's own ADB service (127.0.0.1:5555), so no computer is needed.
   - Make ClearFrame the Home screen: turns off the TV's own home screen (a known launcher only), checks Home now opens ClearFrame, and turns it back on if not.
   - Lists apps with TV Detox's verdicts (safe / review / keep; apps the TV needs are hidden). OK selects; "Turn off selected" asks twice. Apps are turned off, never uninstalled.
