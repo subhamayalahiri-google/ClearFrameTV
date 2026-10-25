@@ -50,8 +50,10 @@ final class HomeView extends View {
 
     private static final float W = 1920, H = 1080;
     // Dock (style.css .dock, .tile, .plate)
-    private static final float DOCK_X = 208, DOCK_Y = 676, DOCK_W = 1504, DOCK_H = 232, DOCK_R = 48;
-    private static final float SHELF_X = 16, SHELF_W = 1472, TILE_W = 288, TILE_H = 200, TILE_Y = 16, PITCH = 296, TILE_R = 32;
+    private static final float DOCK_Y = 676, DOCK_MAX_W = 1504, DOCK_H = 232, DOCK_R = 48;
+    private static final float SHELF_X = 16, TILE_W = 288, TILE_H = 200, TILE_Y = 16, PITCH = 296, TILE_R = 32;
+    // The dock fits its tiles, up to five wide, centred; more than five scroll.
+    private float dockX = (W - DOCK_MAX_W) / 2, dockW = DOCK_MAX_W, shelfW = DOCK_MAX_W - 2 * SHELF_X;
     // Top-right controls (style.css .utils, .u)
     private static final float UTIL_RIGHT = 112, UTIL_Y = 72, UTIL_SIZE = 64, UTIL_GAP = 8, UTIL_ICON = 32;
     // All apps grid
@@ -109,6 +111,9 @@ final class HomeView extends View {
         for (int i = 0; i < dock.size(); i++) if (dock.get(i).pkg.equals(focused)) dockIndex = i;
         if (gridIndex >= all.size()) gridIndex = Math.max(0, all.size() - 1);
         if (dock.isEmpty() && area == AREA_DOCK) area = AREA_UTILS;
+        dockW = dock.isEmpty() ? DOCK_MAX_W : Math.min(DOCK_MAX_W, 2 * SHELF_X + dock.size() * PITCH - (PITCH - TILE_W));
+        dockX = (W - dockW) / 2;
+        shelfW = dockW - 2 * SHELF_X;
         settle(false);
     }
 
@@ -211,7 +216,7 @@ final class HomeView extends View {
     }
 
     private void drawDock(Canvas c) {
-        rect.set(DOCK_X, DOCK_Y, DOCK_X + DOCK_W, DOCK_Y + DOCK_H);
+        rect.set(dockX, DOCK_Y, dockX + dockW, DOCK_Y + DOCK_H);
         clip.reset();
         clip.addRoundRect(rect, DOCK_R, DOCK_R, Path.Direction.CW);
         c.save();
@@ -234,18 +239,18 @@ final class HomeView extends View {
             text.setTextSize(36);
             text.setColor(INK);
             text.setTextAlign(Paint.Align.CENTER);
-            c.drawText("Open All apps and hold OK on an app to add it here", DOCK_X + DOCK_W / 2, DOCK_Y + DOCK_H / 2 + 12, text);
+            c.drawText("Open All apps and hold OK on an app to add it here", dockX + dockW / 2, DOCK_Y + DOCK_H / 2 + 12, text);
             text.setTextAlign(Paint.Align.LEFT);
             return;
         }
 
         c.save();
-        c.clipRect(DOCK_X + SHELF_X, DOCK_Y, DOCK_X + SHELF_X + SHELF_W, DOCK_Y + DOCK_H);
-        float baseX = DOCK_X + SHELF_X - trackX;
+        c.clipRect(dockX + SHELF_X, DOCK_Y, dockX + SHELF_X + shelfW, DOCK_Y + DOCK_H);
+        float baseX = dockX + SHELF_X - trackX;
         if (overlay == OVERLAY_NONE && area == AREA_DOCK) drawPlate(c, baseX + plateX, DOCK_Y + TILE_Y, TILE_W, TILE_H);
         for (int i = 0; i < dock.size(); i++) {
             float x = baseX + i * PITCH;
-            if (x + TILE_W < DOCK_X || x > DOCK_X + DOCK_W) continue;
+            if (x + TILE_W < dockX || x > dockX + dockW) continue;
             drawTile(c, dock.get(i), x, DOCK_Y + TILE_Y, area == AREA_DOCK && dockIndex == i && overlay == OVERLAY_NONE, false);
         }
         c.restore();
@@ -381,7 +386,8 @@ final class HomeView extends View {
         float target = dockIndex * PITCH;
         float newTrack = trackX;
         if (target - newTrack < 0) newTrack = target;
-        if (target + TILE_W - newTrack > SHELF_W) newTrack = target + TILE_W - SHELF_W;
+        if (target + TILE_W - newTrack > shelfW) newTrack = target + TILE_W - shelfW;
+        newTrack = Math.min(newTrack, Math.max(0, dock.size() * PITCH - (PITCH - TILE_W) - shelfW));
         final float fromPlate = plateX, fromTrack = trackX, toTrack = newTrack;
         if (plateAnim != null) plateAnim.cancel();
         if (!animate || !ValueAnimator.areAnimatorsEnabled()) {

@@ -49,9 +49,13 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         MARKS.put("com.google.android.youtube.tv", "youtube");
         MARKS.put("com.netflix.ninja", "netflix");
         MARKS.put("com.amazon.amazonvideo.livingroom", "primevideo");
+        MARKS.put("com.mvas.stb.emu.free", "stbemu"); // tools/render-stbemu-mark.py
+        MARKS.put("com.mvas.stb.emu.pro", "stbemu");
         NAMES.put("com.google.android.youtube.tv", "YouTube");
         NAMES.put("com.netflix.ninja", "Netflix");
         NAMES.put("com.amazon.amazonvideo.livingroom", "Prime Video");
+        NAMES.put("com.mvas.stb.emu.free", "StbEmu");
+        NAMES.put("com.mvas.stb.emu.pro", "StbEmu");
     }
 
     // Not shown in All apps: this home screen and the TV's own launchers.
