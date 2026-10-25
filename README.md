@@ -23,7 +23,8 @@ Not yet: reordering the dock.
 
 1. On the TV: Settings → Device Preferences → About → press OK on Build 7 times. Then Developer options → turn on ADB debugging.
 2. Install Downloader (by AFTVnews) from the Play Store, allow it to install unknown apps, and open
-   `https://github.com/subhamayalahiri-google/ClearFrameTV/releases/download/latest/clearframe.apk` (needs this repo to be public).
+   `is.gd/clearframetv`. It redirects to
+   `https://github.com/subhamayalahiri-google/ClearFrameTV/releases/download/latest/clearframe.apk`, which always serves the newest build.
 3. Open ClearFrame from the TV's apps, go Up → Settings → Clean up TV. Accept "Allow USB debugging?" (tick Always allow).
 4. Choose Make ClearFrame the Home screen and press OK twice. Then turn off apps a few at a time, checking the TV still works.
 
