@@ -62,7 +62,7 @@ final class AdbClient implements Closeable {
 
     static final String HOST = "127.0.0.1";
     static final int PORT = 5555;
-    private static final int CONNECT_TIMEOUT_MS = 4000, READ_TIMEOUT_MS = 15000, ALLOW_TIMEOUT_MS = 120000;
+    private static final int CONNECT_TIMEOUT_MS = 4000, READ_TIMEOUT_MS = 15000, ALLOW_TIMEOUT_MS = 120000, RETRY_MS = 3000;
 
     private final Socket socket;
     private final DataInputStream in;
@@ -81,39 +81,72 @@ final class AdbClient implements Closeable {
 
     // Also used by ci/AdbClientHostTest.java against the emulator's adbd.
     static AdbClient connect(KeyPair keys, String host, int port, Listener listener) throws IOException, GeneralSecurityException {
-        Socket s = new Socket();
-        s.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
-        s.setSoTimeout(READ_TIMEOUT_MS);
-        AdbClient c = new AdbClient(s);
+        AdbClient c = open(host, port);
         try {
-            c.send(A_CNXN, VERSION, MAX_DATA, "host::\0".getBytes(StandardCharsets.UTF_8));
-            boolean signed = false, offered = false;
-            while (true) {
+            if (c.signIn(keys)) return c;
+            // The TV doesn't know this key yet: offering it makes the TV show "Allow USB debugging?".
+            c.send(A_AUTH, AUTH_RSAPUBLICKEY, 0, publicKey((RSAPublicKey) keys.getPublic()));
+            if (listener != null) listener.waitingForAllow();
+            // The BRAVIA (Android 8) saves the key on OK but never answers this connection, so a
+            // fresh connection also signs in every few seconds; it doesn't offer the key again.
+            c.socket.setSoTimeout(RETRY_MS);
+            long end = System.currentTimeMillis() + ALLOW_TIMEOUT_MS;
+            while (System.currentTimeMillis() < end) {
                 Message m;
                 try { m = c.read(); }
-                catch (SocketTimeoutException e) { if (offered) throw new NotAllowedException(); throw e; }
-                if (m.command == A_CNXN) {
-                    s.setSoTimeout(READ_TIMEOUT_MS);
-                    return c;
+                catch (SocketTimeoutException e) {
+                    AdbClient again = retry(keys, host, port);
+                    if (again != null) { c.close(); return again; }
+                    continue;
                 }
-                if (m.command != A_AUTH || m.arg0 != AUTH_TOKEN) throw new IOException("Unexpected reply from the TV.");
-                if (!signed) {
-                    c.send(A_AUTH, AUTH_SIGNATURE, 0, sign(keys.getPrivate(), m.data));
-                    signed = true;
-                } else if (!offered) {
-                    // The TV doesn't know this key yet: it now shows "Allow debugging?".
-                    c.send(A_AUTH, AUTH_RSAPUBLICKEY, 0, publicKey((RSAPublicKey) keys.getPublic()));
-                    offered = true;
-                    s.setSoTimeout(ALLOW_TIMEOUT_MS);
-                    if (listener != null) listener.waitingForAllow();
-                } else {
-                    throw new NotAllowedException();
-                }
+                if (m.command != A_CNXN) break;
+                c.socket.setSoTimeout(READ_TIMEOUT_MS);
+                return c;
             }
+            throw new NotAllowedException();
         } catch (IOException | GeneralSecurityException e) {
             c.close();
             throw e;
         }
+    }
+
+    private static AdbClient open(String host, int port) throws IOException {
+        Socket s = new Socket();
+        try {
+            s.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
+            s.setSoTimeout(READ_TIMEOUT_MS);
+            AdbClient c = new AdbClient(s);
+            c.send(A_CNXN, VERSION, MAX_DATA, "host::\0".getBytes(StandardCharsets.UTF_8));
+            return c;
+        } catch (IOException e) {
+            s.close();
+            throw e;
+        }
+    }
+
+    // Answers the TV's token with this key's signature. True once the TV accepts the connection,
+    // false if it doesn't know the key (it sends a new token).
+    private boolean signIn(KeyPair keys) throws IOException, GeneralSecurityException {
+        boolean signed = false;
+        while (true) {
+            Message m = read();
+            if (m.command == A_CNXN) return true;
+            if (m.command != A_AUTH || m.arg0 != AUTH_TOKEN) throw new IOException("Unexpected reply from the TV.");
+            if (signed) return false;
+            send(A_AUTH, AUTH_SIGNATURE, 0, sign(keys.getPrivate(), m.data));
+            signed = true;
+        }
+    }
+
+    // One sign-in on a new connection while the TV's message is up; null if the key isn't allowed yet.
+    private static AdbClient retry(KeyPair keys, String host, int port) throws GeneralSecurityException {
+        AdbClient c;
+        try { c = open(host, port); } catch (IOException e) { return null; }
+        boolean ok = false;
+        try { ok = c.signIn(keys); }
+        catch (IOException e) { /* try again next time */ }
+        finally { if (!ok) c.close(); }
+        return ok ? c : null;
     }
 
     // Runs one shell command and returns everything it printed, with \r removed.

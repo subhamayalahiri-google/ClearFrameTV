@@ -589,7 +589,7 @@ public final class CleanupActivity extends Activity {
                 say("Self test passed: sdk " + sdk + ", " + pkgs.size() + " packages");
             } catch (Exception e) {
                 Log.e(TAG, "SELFTEST fail " + e, e);
-                say("Self test failed: " + e + "\n" + adbProps());
+                say("Self test failed: " + (e.getMessage() != null ? e.getMessage() : e) + "\n" + adbProps());
             }
         });
     }
