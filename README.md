@@ -35,7 +35,7 @@ GitHub Actions builds `clearframe.apk` on every push (see the run's `clearframe-
 
 Locally: Java 17, Android SDK `platforms;android-34` and `build-tools;34.0.0`, then `sh build.sh`.
 
-To keep the same signing key between builds, add two repository secrets: `KEYSTORE_B64` (a base64-encoded `.jks`) and `KEYSTORE_PASS`. Without them each build is signed with a throwaway key, and installing a newer build needs the old one uninstalled first.
+Releases are signed with one permanent key, so each update installs over the last one. The key lives only in two repository secrets: `KEYSTORE_B64` (the base64-encoded PKCS12 keystore) and `KEYSTORE_PASS`. The workflow refuses to publish an APK whose certificate SHA-256 differs from `RELEASE_CERT_SHA256` in `.github/workflows/build.yml`. Keep an offline copy of the keystore: if it is lost, the next build can only be installed after uninstalling ClearFrame.
 
 ## Credits
 

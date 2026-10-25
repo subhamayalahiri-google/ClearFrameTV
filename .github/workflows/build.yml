@@ -7,6 +7,11 @@ on:
 permissions:
   contents: write
 
+env:
+  # SHA-256 of the permanent signing certificate (public, not a secret). Releases must match it,
+  # so an update always installs over the previous version.
+  RELEASE_CERT_SHA256: ace62a53f6b46b9c71fffa08776f6381bc78bdc6f655a5986d7260182de55fd9
+
 jobs:
   apk:
     runs-on: ubuntu-latest
@@ -22,15 +27,27 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.KEYSTORE_B64 }}
         run: |
-          if [ -n "$KEYSTORE_B64" ]; then echo "$KEYSTORE_B64" | base64 -d > release.jks; echo "KEYSTORE=release.jks" >> "$GITHUB_ENV"; else echo "::warning::No KEYSTORE_B64 secret: signing with a throwaway key. Updates will need an uninstall first."; fi
+          if [ -n "$KEYSTORE_B64" ]; then
+            echo "$KEYSTORE_B64" | base64 -d > release.p12; echo "KEYSTORE=release.p12" >> "$GITHUB_ENV"
+          elif [ "$GITHUB_REF" = refs/heads/main ] || [ "$GITHUB_REF" = refs/heads/claude/clearframe-launcher ]; then
+            echo "::error::The KEYSTORE_B64 secret is missing. Release builds must use the permanent key."; exit 1
+          else
+            echo "::warning::No KEYSTORE_B64 secret: signing with a throwaway key."
+          fi
       - name: Build
         env:
           KEYSTORE_PASS: ${{ secrets.KEYSTORE_PASS }}
         run: sh build.sh
+      - name: Show signing certificate
+        run: |
+          "$ANDROID_HOME/build-tools/34.0.0/apksigner" verify --print-certs out/clearframe.apk | tee out/cert.txt
+          rm -f release.p12
       - uses: actions/upload-artifact@v4
         with:
           name: clearframe-apk
-          path: out/clearframe.apk
+          path: |
+            out/clearframe.apk
+            out/cert.txt
 
   release:
     # Publishes the APK that passed the emulator check at a fixed link the TV can download:
@@ -43,6 +60,11 @@ jobs:
         with:
           name: clearframe-apk
           path: out
+      - name: Check the APK is signed with the permanent key
+        run: |
+          got=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' out/cert.txt)
+          echo "certificate SHA-256: $got"
+          [ "$got" = "$RELEASE_CERT_SHA256" ] || { echo "::error::APK is not signed with the permanent key; not publishing."; exit 1; }
       - name: Update the "latest" release
         env:
           GH_TOKEN: ${{ github.token }}
