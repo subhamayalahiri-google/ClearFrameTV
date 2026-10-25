@@ -17,11 +17,13 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.KeyEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -424,14 +426,30 @@ final class HomeView extends View {
             return true;
         }
         if (k == KeyEvent.KEYCODE_BACK) return true;
-        if (overlay == OVERLAY_APPS) return gridKey(k) || super.onKeyDown(k, e);
-        if (overlay == OVERLAY_MENU) return menuKey(k) || super.onKeyDown(k, e);
-        return homeKey(k) || super.onKeyDown(k, e);
+        int[] before = focus();
+        boolean handled = overlay == OVERLAY_APPS ? gridKey(k) : overlay == OVERLAY_MENU ? menuKey(k) : homeKey(k);
+        // Focus here isn't Android's view focus, so play its navigation sound when focus moves.
+        if (!Arrays.equals(before, focus())) playSoundEffect(navigationSound(k));
+        return handled || super.onKeyDown(k, e);
+    }
+
+    private int[] focus() {
+        return new int[] {overlay, area, dockIndex, utilIndex, menuIndex, gridIndex};
+    }
+
+    private static int navigationSound(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_DPAD_LEFT: return SoundEffectConstants.NAVIGATION_LEFT;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return SoundEffectConstants.NAVIGATION_RIGHT;
+            case KeyEvent.KEYCODE_DPAD_UP: return SoundEffectConstants.NAVIGATION_UP;
+            default: return SoundEffectConstants.NAVIGATION_DOWN;
+        }
     }
 
     @Override
     public boolean onKeyLongPress(int k, KeyEvent e) {
         if (isOk(k) && overlay == OVERLAY_APPS && gridIndex < all.size()) {
+            playSoundEffect(SoundEffectConstants.CLICK);
             host.toggleOnHome(all.get(gridIndex));
             return true;
         }
@@ -442,6 +460,7 @@ final class HomeView extends View {
     public boolean onKeyUp(int k, KeyEvent e) {
         if (isOk(k)) {
             if (!e.isTracking() || e.isCanceled()) return true;
+            playSoundEffect(SoundEffectConstants.CLICK);
             ok();
             return true;
         }
