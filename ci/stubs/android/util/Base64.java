@@ -1,0 +1,9 @@
+package android.util;
+
+// Compile-time stand-in so ci/AdbClientHostTest.java can build AdbClient on a plain JVM.
+public final class Base64 {
+    public static final int NO_WRAP = 2;
+    public static String encodeToString(byte[] input, int flags) {
+        return java.util.Base64.getEncoder().encodeToString(input);
+    }
+}
