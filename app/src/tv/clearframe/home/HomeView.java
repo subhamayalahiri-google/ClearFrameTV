@@ -167,15 +167,19 @@ final class HomeView extends View {
         paint.setShader(null);
     }
 
+    // A tall clock: large and narrowed, its top level with the controls on the right.
     private void drawClock(Canvas c) {
         text.setTypeface(medium);
-        text.setTextSize(48);
+        text.setTextSize(190);
+        text.setTextScaleX(.78f);
         text.setLetterSpacing(-1.5f / 48);
         text.setColor(INK);
-        text.setShadowLayer(3, 0, 1, 0x38000000);
-        c.drawText(clockFormat.format(new Date()), 140, 72 + 50, text);
+        text.setShadowLayer(8, 0, 2, 0x38000000);
+        text.getTextBounds("0", 0, 1, src);
+        c.drawText(clockFormat.format(new Date()), 140, UTIL_Y - src.top, text);
         text.clearShadowLayer();
         text.setLetterSpacing(0);
+        text.setTextScaleX(1);
     }
 
     private float utilX(int i) {
