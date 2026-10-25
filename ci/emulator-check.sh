@@ -31,7 +31,7 @@ adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.and
 adb shell input keyevent KEYCODE_DPAD_DOWN
 shot 7-dock-with-apps 3
 
-# Built-in ADB client against the emulator's own adbd, as Clean up TV does on the TV.
+# Clean up TV inside the emulator. Its adbd has no TCP port, so this shows the "can't reach" screen.
 {
   echo "ro.adb.secure=$(adb shell getprop ro.adb.secure | tr -d '\r')"
   echo "service.adb.tcp.port=$(adb shell getprop service.adb.tcp.port | tr -d '\r')"
@@ -45,15 +45,22 @@ selftest() {
   adb logcat -d -s ClearFrame:* > "$OUT/$1.txt"
 }
 selftest 8-selftest
-if ! grep -q "SELFTEST ok" "$OUT/8-selftest.txt"; then
-  adb shell input keyevent KEYCODE_BACK
-  adb tcpip 5555; sleep 10; adb wait-for-device; sleep 5
-  echo "after tcpip, listening on 5555: $(adb shell cat /proc/net/tcp /proc/net/tcp6 | grep -ci ':15B3 .* 0A ')" >> "$OUT/adbd.txt"
-  selftest 9-selftest-tcp
-fi
-grep -h "SELFTEST" "$OUT"/8-selftest.txt "$OUT"/9-selftest-tcp.txt 2>/dev/null | tee "$OUT/selftest-result.txt"
+grep -h "SELFTEST" "$OUT"/8-selftest.txt | head -1 | tee "$OUT/selftest-result.txt"
 
+# AdbClient against the emulator's real adbd, from this machine (the app can't reach it from
+# inside the emulator: there adbd uses a pipe, not TCP 5555).
+HC=$(mktemp -d)
+javac -nowarn -d "$HC" ci/stubs/android/content/Context.java ci/stubs/android/util/Base64.java \
+  app/src/tv/clearframe/home/AdbClient.java ci/AdbClientHostTest.java 2>&1 | grep -v JAVA_TOOL_OPTIONS
 adb logcat -d -s AndroidRuntime:E > "$OUT/crashes.txt"
-grep -q "FATAL EXCEPTION" "$OUT/crashes.txt" && fail "App crashed"
+adb kill-server; sleep 2
+timeout 60 java -cp "$HC" tv.clearframe.home.AdbClientHostTest host "$HOME/.android/adbkey" > "$OUT/adbclient-host.txt" 2>&1
+# A key the emulator hasn't seen should make adbd show "Allow USB debugging?".
+timeout 90 java -cp "$HC" tv.clearframe.home.AdbClientHostTest newkey "$HC/newkey" > "$OUT/adbclient-newkey.txt" 2>&1 &
+sleep 12
+adb start-server; adb wait-for-device
+shot 10-allow-prompt 2
+grep -q ADB_CLIENT_OK "$OUT/adbclient-host.txt" || fail "AdbClient could not run commands on the emulator's adbd: $(tail -3 "$OUT/adbclient-host.txt")"
+grep -q FATAL "$OUT/crashes.txt" && fail "App crashed"
 echo "CHECK PASSED" | tee -a "$OUT/result.txt"
 exit 0

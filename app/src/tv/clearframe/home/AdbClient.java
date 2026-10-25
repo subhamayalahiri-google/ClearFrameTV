@@ -38,6 +38,7 @@ final class AdbClient implements Closeable {
     interface Listener { void waitingForAllow(); }
 
     static final class NotAllowedException extends IOException {
+        private static final long serialVersionUID = 1L;
         NotAllowedException() { super("The TV didn't allow debugging."); }
     }
 
@@ -75,9 +76,13 @@ final class AdbClient implements Closeable {
     }
 
     static AdbClient connect(Context ctx, Listener listener) throws IOException, GeneralSecurityException {
-        KeyPair keys = keys(ctx);
+        return connect(keys(ctx), HOST, PORT, listener);
+    }
+
+    // Also used by ci/AdbClientHostTest.java against the emulator's adbd.
+    static AdbClient connect(KeyPair keys, String host, int port, Listener listener) throws IOException, GeneralSecurityException {
         Socket s = new Socket();
-        s.connect(new InetSocketAddress(HOST, PORT), CONNECT_TIMEOUT_MS);
+        s.connect(new InetSocketAddress(host, port), CONNECT_TIMEOUT_MS);
         s.setSoTimeout(READ_TIMEOUT_MS);
         AdbClient c = new AdbClient(s);
         try {
