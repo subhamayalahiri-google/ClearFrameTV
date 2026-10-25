@@ -11,7 +11,8 @@ BT=$SDK/build-tools/34.0.0; JAR=$SDK/platforms/android-34/android.jar
 
 rm -rf out; mkdir -p out/classes out/dex
 
-"$BT/aapt2" link -o out/base.apk -I "$JAR" --manifest app/AndroidManifest.xml -A app/assets \
+"$BT/aapt2" compile --dir app/res -o out/res.zip
+"$BT/aapt2" link -o out/base.apk -I "$JAR" --manifest app/AndroidManifest.xml -A app/assets -R out/res.zip --auto-add-overlay \
   --min-sdk-version 26 --target-sdk-version 34
 # shellcheck disable=SC2046 # javac and d8 want one argument per file
 javac -nowarn -Xlint:-options -encoding UTF-8 -source 1.8 -target 1.8 -bootclasspath "$JAR:$BT/core-lambda-stubs.jar" \

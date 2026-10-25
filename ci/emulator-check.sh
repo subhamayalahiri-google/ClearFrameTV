@@ -10,6 +10,11 @@ front() { adb shell dumpsys window windows | grep -m1 mCurrentFocus | tr -d '\r'
 
 adb wait-for-device
 adb install -r out/clearframe.apk || fail "install"
+# It must be openable from the TV's apps row before it is the Home screen.
+adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER > "$OUT/leanback-apps.txt"
+grep -q tv.clearframe.home "$OUT/leanback-apps.txt" || fail "ClearFrame is not in the TV's apps row"
+adb shell input keyevent KEYCODE_HOME; sleep 6
+shot 0-stock-launcher-apps-row 0
 adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.HOME > "$OUT/home-candidates.txt"
 adb shell pm disable-user --user 0 com.google.android.tvlauncher
 adb shell pm disable-user --user 0 com.google.android.leanbacklauncher
@@ -32,7 +37,6 @@ adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.and
 adb shell input keyevent KEYCODE_DPAD_DOWN
 shot 7-dock-with-apps 3
 adb logcat -d -s ClearFrame:* > "$OUT/dock-log.txt"
-adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER > "$OUT/leanback-apps.txt"
 
 # Clean up TV inside the emulator. Its adbd has no TCP port, so this shows the "can't reach" screen.
 {
