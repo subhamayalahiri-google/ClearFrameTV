@@ -88,9 +88,17 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         f.addAction(Intent.ACTION_PACKAGE_CHANGED);
         f.addDataScheme("package");
         registerReceiver(packages, f);
+        handleExtras(getIntent());
+    }
 
-        // CI only (ci/emulator-check.sh): runs Clean up TV's read-only connection test.
-        if (getIntent().getBooleanExtra("selftest", false)) {
+    // Set-up hooks, used by ci/emulator-check.sh:
+    //   --es apps "pkg1,pkg2"   sets the dock apps
+    //   --ez selftest true      runs Clean up TV's read-only connection test
+    private void handleExtras(Intent i) {
+        if (i == null) return;
+        String apps = i.getStringExtra("apps");
+        if (apps != null) prefs.edit().putString(KEY_APPS, apps.replace(" ", "")).apply();
+        if (i.getBooleanExtra("selftest", false)) {
             startActivity(new Intent(this, CleanupActivity.class).putExtra("selftest", true));
         }
     }
@@ -124,6 +132,7 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         super.onNewIntent(intent);
         // Pressing Home while Home is showing closes any open panel.
         if (view != null) view.closeOverlays();
+        handleExtras(intent);
     }
 
     @Override

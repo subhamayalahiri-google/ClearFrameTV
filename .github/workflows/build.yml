@@ -32,6 +32,26 @@ jobs:
           name: clearframe-apk
           path: out/clearframe.apk
 
+  release:
+    # Publishes the APK that passed the emulator check at a fixed link the TV can download:
+    # https://github.com/<owner>/ClearFrameTV/releases/download/latest/clearframe.apk
+    needs: [apk, emulator]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/clearframe-launcher'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: clearframe-apk
+          path: out
+      - name: Update the "latest" release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view latest -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create latest -R "$GITHUB_REPOSITORY" --title "Latest build" --notes "Built from ${GITHUB_SHA}" --prerelease --target "$GITHUB_SHA"
+          gh release upload latest out/clearframe.apk -R "$GITHUB_REPOSITORY" --clobber
+          gh release edit latest -R "$GITHUB_REPOSITORY" --notes "Built from ${GITHUB_SHA} on ${GITHUB_REF_NAME}"
+
   emulator:
     needs: apk
     runs-on: ubuntu-latest

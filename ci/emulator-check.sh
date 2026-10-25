@@ -26,26 +26,32 @@ adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_DPAD_RIG
 adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_DPAD_LEFT; adb shell input keyevent KEYCODE_DPAD_LEFT; adb shell input keyevent KEYCODE_DPAD_CENTER; shot 6-next-wallpaper 3
 front | grep -q tv.clearframe.home || fail "Left ClearFrame during navigation: $(front)"
 
-# Built-in ADB client: try as is, then with adbd listening on TCP 5555 (as on a TV).
-adb logcat -c
-adb shell am start -n tv.clearframe.home/.HomeActivity --ez selftest true
-sleep 20
-shot 7-cleanup-selftest 0
-adb logcat -d -s ClearFrame:* > "$OUT/selftest-1.txt"
-if ! grep -q "SELFTEST ok" "$OUT/selftest-1.txt"; then
-  adb tcpip 5555; sleep 5; adb wait-for-device
-  adb shell getprop service.adb.tcp.port > "$OUT/tcp-port.txt"
+# Dock tiles: put two apps the emulator has on the dock.
+adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.android.videos,com.android.tv.settings,com.google.android.youtube.tv"
+adb shell input keyevent KEYCODE_DPAD_DOWN
+shot 7-dock-with-apps 3
+
+# Built-in ADB client against the emulator's own adbd, as Clean up TV does on the TV.
+{
+  echo "ro.adb.secure=$(adb shell getprop ro.adb.secure | tr -d '\r')"
+  echo "service.adb.tcp.port=$(adb shell getprop service.adb.tcp.port | tr -d '\r')"
+  echo "listening on 5555: $(adb shell cat /proc/net/tcp /proc/net/tcp6 | grep -ci ':15B3 .* 0A ')"
+} > "$OUT/adbd.txt"
+selftest() {
   adb logcat -c
-  adb shell am force-stop tv.clearframe.home
   adb shell am start -n tv.clearframe.home/.HomeActivity --ez selftest true
-  sleep 10; shot 8-allow-prompt 0
-  # Accept "Allow USB debugging?" if it shows: tick Always allow, then OK.
-  adb shell input keyevent KEYCODE_DPAD_DOWN; adb shell input keyevent KEYCODE_DPAD_CENTER
-  adb shell input keyevent KEYCODE_DPAD_DOWN; adb shell input keyevent KEYCODE_DPAD_RIGHT; adb shell input keyevent KEYCODE_DPAD_CENTER
-  sleep 20; shot 9-cleanup-selftest-tcp 0
-  adb logcat -d -s ClearFrame:* > "$OUT/selftest-2.txt"
+  sleep 25
+  shot "$1" 0
+  adb logcat -d -s ClearFrame:* > "$OUT/$1.txt"
+}
+selftest 8-selftest
+if ! grep -q "SELFTEST ok" "$OUT/8-selftest.txt"; then
+  adb shell input keyevent KEYCODE_BACK
+  adb tcpip 5555; sleep 10; adb wait-for-device; sleep 5
+  echo "after tcpip, listening on 5555: $(adb shell cat /proc/net/tcp /proc/net/tcp6 | grep -ci ':15B3 .* 0A ')" >> "$OUT/adbd.txt"
+  selftest 9-selftest-tcp
 fi
-grep -h "SELFTEST" "$OUT"/selftest-*.txt | tee "$OUT/selftest-result.txt"
+grep -h "SELFTEST" "$OUT"/8-selftest.txt "$OUT"/9-selftest-tcp.txt 2>/dev/null | tee "$OUT/selftest-result.txt"
 
 adb logcat -d -s AndroidRuntime:E > "$OUT/crashes.txt"
 grep -q "FATAL EXCEPTION" "$OUT/crashes.txt" && fail "App crashed"
