@@ -88,6 +88,11 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         f.addAction(Intent.ACTION_PACKAGE_CHANGED);
         f.addDataScheme("package");
         registerReceiver(packages, f);
+
+        // CI only (ci/emulator-check.sh): runs Clean up TV's read-only connection test.
+        if (getIntent().getBooleanExtra("selftest", false)) {
+            startActivity(new Intent(this, CleanupActivity.class).putExtra("selftest", true));
+        }
     }
 
     @Override
@@ -245,6 +250,6 @@ public final class HomeActivity extends Activity implements HomeView.Host {
 
     @Override
     public void openCleanup() {
-        view.showStatus("Clean up TV isn't built yet.");
+        startActivity(new Intent(this, CleanupActivity.class));
     }
 }
