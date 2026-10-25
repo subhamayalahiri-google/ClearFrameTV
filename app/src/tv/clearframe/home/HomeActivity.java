@@ -23,6 +23,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -277,14 +278,19 @@ public final class HomeActivity extends Activity implements HomeView.Host {
     // Names live only in ClearFrame: Android doesn't let one app rename another.
     @Override
     public void rename(final HomeView.App app) {
+        // Starts empty with the current name as a hint: typing on a TV keyboard then gives the whole
+        // new name, with no old text to delete letter by letter.
         final EditText field = new EditText(this);
         field.setSingleLine(true);
-        field.setText(app.label);
-        field.setSelectAllOnFocus(true);
+        field.setHint(app.label);
         field.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        FrameLayout box = new FrameLayout(this);
+        int pad = Math.round(24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, 0, pad, 0);
+        box.addView(field);
         final AlertDialog dialog = new AlertDialog.Builder(this)
                 .setTitle("Rename " + app.label)
-                .setView(field)
+                .setView(box)
                 .setPositiveButton("Save", (d, w) -> saveName(app, field.getText().toString()))
                 .setNegativeButton("Cancel", null)
                 .create();
@@ -303,7 +309,8 @@ public final class HomeActivity extends Activity implements HomeView.Host {
 
     private void saveName(HomeView.App app, String name) {
         name = name.trim();
-        if (name.isEmpty() || name.equals(defaultName(app.pkg, null))) { resetName(app); return; }
+        if (name.isEmpty()) return; // nothing typed: keep the name
+        if (name.equals(defaultName(app.pkg, null))) { resetName(app); return; }
         prefs.edit().putString(NAME_PREFIX + app.pkg, name).apply();
         Log.i(TAG, "renamed " + app.pkg + " -> " + name);
         refreshApps();
