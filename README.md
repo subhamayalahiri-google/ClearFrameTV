@@ -4,16 +4,30 @@ A quiet home screen for an Android TV, in the style of [CleanFrame](https://gith
 
 It is a native Android rewrite. CleanFrame itself is a Samsung Tizen web app and does not run on Android.
 
-## What works (0.1.0)
+## What works (0.2.0)
 
 - Photo wallpaper with CleanFrame's pre-blurred glass dock. Six bundled photos.
 - 12-hour clock, top left.
 - Dock of apps: YouTube, Netflix, Prime Video and StbEmu (free or pro, whichever is installed). Left/Right moves, OK opens.
 - Up reaches three controls: Next wallpaper, All apps, Settings.
 - All apps: OK opens an app; hold OK to add it to the dock or remove it.
-- Settings: TV settings. "Clean up TV" is listed but not built yet.
+- Settings → Clean up TV: connects to the TV's own ADB service (127.0.0.1:5555), so no computer is needed.
+  - Make ClearFrame the Home screen: turns off the TV's own home screen (a known launcher only), checks Home now opens ClearFrame, and turns it back on if not.
+  - Lists apps with TV Detox's verdicts (safe / review / keep; apps the TV needs are hidden). OK selects; "Turn off selected" asks twice. Apps are turned off, never uninstalled.
+  - Turn everything back on: undoes all of it from the list saved on the TV (`/data/local/tmp/clearframe-disabled.txt`).
+- Settings → TV settings.
 
-Not yet: reordering the dock, the TV clean-up (turning off preinstalled apps, from TV Detox), making Home open this app without a computer.
+Not yet: reordering the dock.
+
+## Install on the TV (no computer)
+
+1. On the TV: Settings → Device Preferences → About → press OK on Build 7 times. Then Developer options → turn on ADB debugging.
+2. Install Downloader (by AFTVnews) from the Play Store, allow it to install unknown apps, and open
+   `https://github.com/subhamayalahiri-google/ClearFrameTV/releases/download/latest/clearframe.apk` (needs this repo to be public).
+3. Open ClearFrame from the TV's apps, go Up → Settings → Clean up TV. Accept "Allow USB debugging?" (tick Always allow).
+4. Choose Make ClearFrame the Home screen and press OK twice. Then turn off apps a few at a time, checking the TV still works.
+
+If something goes wrong: Clean up TV → Turn everything back on, or TV Settings → Apps → the app → Enable.
 
 ## Build
 
