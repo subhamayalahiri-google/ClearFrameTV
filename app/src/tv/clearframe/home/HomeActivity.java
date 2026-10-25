@@ -16,6 +16,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.Window;
 import android.view.WindowManager;
 
@@ -29,6 +30,7 @@ import java.util.Map;
 
 public final class HomeActivity extends Activity implements HomeView.Host {
 
+    private static final String TAG = "ClearFrame";
     private static final String PREFS = "home";
     private static final String KEY_APPS = "apps", KEY_WALL = "wallpaper";
 
@@ -97,6 +99,7 @@ public final class HomeActivity extends Activity implements HomeView.Host {
     private void handleExtras(Intent i) {
         if (i == null) return;
         String apps = i.getStringExtra("apps");
+        Log.i(TAG, "extras apps=" + apps + " selftest=" + i.getBooleanExtra("selftest", false));
         if (apps != null) prefs.edit().putString(KEY_APPS, apps.replace(" ", "")).apply();
         if (i.getBooleanExtra("selftest", false)) {
             startActivity(new Intent(this, CleanupActivity.class).putExtra("selftest", true));
@@ -219,6 +222,7 @@ public final class HomeActivity extends Activity implements HomeView.Host {
             all.add(a);
         }
         Collections.sort(all, (a, b) -> a.label.compareToIgnoreCase(b.label));
+        Log.i(TAG, "dock " + wanted + " -> " + dock.size() + " shown, " + all.size() + " apps installed");
         view.setApps(dock, all);
     }
 

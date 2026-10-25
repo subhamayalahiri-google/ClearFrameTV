@@ -27,9 +27,12 @@ adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_DPAD_LEF
 front | grep -q tv.clearframe.home || fail "Left ClearFrame during navigation: $(front)"
 
 # Dock tiles: put two apps the emulator has on the dock.
-adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.android.videos,com.android.tv.settings,com.google.android.youtube.tv"
+adb logcat -c
+adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.android.videos,com.android.tv.settings,com.google.android.youtube.tv" | tee "$OUT/am-start-apps.txt"
 adb shell input keyevent KEYCODE_DPAD_DOWN
 shot 7-dock-with-apps 3
+adb logcat -d -s ClearFrame:* > "$OUT/dock-log.txt"
+adb shell cmd package query-activities --brief -a android.intent.action.MAIN -c android.intent.category.LEANBACK_LAUNCHER > "$OUT/leanback-apps.txt"
 
 # Clean up TV inside the emulator. Its adbd has no TCP port, so this shows the "can't reach" screen.
 {
