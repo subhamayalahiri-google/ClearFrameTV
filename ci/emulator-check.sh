@@ -26,9 +26,9 @@ adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_DPAD_RIG
 adb shell input keyevent KEYCODE_BACK; adb shell input keyevent KEYCODE_DPAD_LEFT; adb shell input keyevent KEYCODE_DPAD_LEFT; adb shell input keyevent KEYCODE_DPAD_CENTER; shot 6-next-wallpaper 3
 front | grep -q tv.clearframe.home || fail "Left ClearFrame during navigation: $(front)"
 
-# Dock tiles: put two apps the emulator has on the dock.
+# Dock tiles: the emulator has only one launchable app (a sample labelled "Videos by Google"); missing apps are skipped.
 adb logcat -c
-adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.android.videos,com.android.tv.settings,com.google.android.youtube.tv" | tee "$OUT/am-start-apps.txt"
+adb shell am start -n tv.clearframe.home/.HomeActivity --es apps "com.google.android.youtube.tv,com.lego.android.tvleanback,com.netflix.ninja" | tee "$OUT/am-start-apps.txt"
 adb shell input keyevent KEYCODE_DPAD_DOWN
 shot 7-dock-with-apps 3
 adb logcat -d -s ClearFrame:* > "$OUT/dock-log.txt"
