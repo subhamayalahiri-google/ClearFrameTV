@@ -17,11 +17,13 @@ import android.graphics.drawable.Drawable;
 import android.text.TextPaint;
 import android.text.TextUtils;
 import android.view.KeyEvent;
+import android.view.SoundEffectConstants;
 import android.view.View;
 import android.view.animation.DecelerateInterpolator;
 
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
@@ -33,6 +35,8 @@ final class HomeView extends View {
     interface Host {
         void launch(App app);
         void toggleOnHome(App app);
+        void rename(App app);
+        void resetName(App app);
         void nextWallpaper();
         void openTvSettings();
         void openCleanup();
@@ -42,7 +46,7 @@ final class HomeView extends View {
         final String pkg, label;
         final Bitmap mark;      // white brand mark, or null
         final Drawable icon;    // installed icon, used when there is no mark
-        boolean onHome;
+        boolean onHome, renamed;
         App(String pkg, String label, Bitmap mark, Drawable icon) {
             this.pkg = pkg; this.label = label; this.mark = mark; this.icon = icon;
         }
@@ -63,7 +67,8 @@ final class HomeView extends View {
     private static final int INK = 0xFFF4F4F1, SOLID = 0xFFF3F3EF, SOLID_INK = 0xFF141618;
 
     private static final int AREA_DOCK = 0, AREA_UTILS = 1;
-    private static final int OVERLAY_NONE = 0, OVERLAY_APPS = 1, OVERLAY_MENU = 2;
+    // OVERLAY_APP_MENU is the options panel for one app, opened by holding OK on the dock or in All apps.
+    private static final int OVERLAY_NONE = 0, OVERLAY_APPS = 1, OVERLAY_MENU = 2, OVERLAY_APP_MENU = 3;
     static final int UTIL_WALLPAPER = 0, UTIL_APPS = 1, UTIL_SETTINGS = 2;
     private static final String[] UTIL_NAMES = {"Next wallpaper", "All apps", "Settings"};
     private static final String[] MENU_ITEMS = {"Clean up TV", "TV settings"};
@@ -83,6 +88,8 @@ final class HomeView extends View {
     private List<App> dock = new ArrayList<>();
     private List<App> all = new ArrayList<>();
     private int area = AREA_DOCK, dockIndex, utilIndex, overlay = OVERLAY_NONE, gridIndex, menuIndex;
+    private App menuApp;        // the app OVERLAY_APP_MENU is for
+    private int menuReturn;     // the overlay to go back to when it closes
     private float plateX, trackX, gridScroll;
     private ValueAnimator plateAnim;
     private String status = "";
@@ -105,11 +112,15 @@ final class HomeView extends View {
 
     void setApps(List<App> dockApps, List<App> allApps) {
         String focused = dockIndex < dock.size() ? dock.get(dockIndex).pkg : null;
+        String gridFocused = gridIndex < all.size() ? all.get(gridIndex).pkg : null;
         dock = dockApps;
         all = allApps;
         dockIndex = 0;
         for (int i = 0; i < dock.size(); i++) if (dock.get(i).pkg.equals(focused)) dockIndex = i;
+        // A rename re-sorts All apps; keep focus on the same app.
+        for (int i = 0; i < all.size(); i++) if (all.get(i).pkg.equals(gridFocused)) gridIndex = i;
         if (gridIndex >= all.size()) gridIndex = Math.max(0, all.size() - 1);
+        scrollGrid();
         if (dock.isEmpty() && area == AREA_DOCK) area = AREA_UTILS;
         dockW = dock.isEmpty() ? DOCK_MAX_W : Math.min(DOCK_MAX_W, 2 * SHELF_X + dock.size() * PITCH - (PITCH - TILE_W));
         dockX = (W - dockW) / 2;
@@ -132,13 +143,15 @@ final class HomeView extends View {
         c.scale(s, s);
         drawPhoto(c, wallpaper);
         drawShades(c);
-        if (overlay == OVERLAY_APPS) drawAllApps(c);
+        int base = overlay == OVERLAY_APP_MENU ? menuReturn : overlay;
+        if (base == OVERLAY_APPS) drawAllApps(c);
         else {
             drawClock(c);
             drawUtils(c);
             drawDock(c);
             if (overlay == OVERLAY_MENU) drawMenu(c);
         }
+        if (overlay == OVERLAY_APP_MENU) drawAppMenu(c);
         drawStatus(c);
         c.restore();
     }
@@ -167,15 +180,19 @@ final class HomeView extends View {
         paint.setShader(null);
     }
 
+    // A tall clock: large and narrowed, its top level with the controls on the right.
     private void drawClock(Canvas c) {
         text.setTypeface(medium);
-        text.setTextSize(48);
+        text.setTextSize(190);
+        text.setTextScaleX(.78f);
         text.setLetterSpacing(-1.5f / 48);
         text.setColor(INK);
-        text.setShadowLayer(3, 0, 1, 0x38000000);
-        c.drawText(clockFormat.format(new Date()), 140, 72 + 50, text);
+        text.setShadowLayer(8, 0, 2, 0x38000000);
+        text.getTextBounds("0", 0, 1, src);
+        c.drawText(clockFormat.format(new Date()), 140, UTIL_Y - src.top, text);
         text.clearShadowLayer();
         text.setLetterSpacing(0);
+        text.setTextScaleX(1);
     }
 
     private float utilX(int i) {
@@ -327,7 +344,7 @@ final class HomeView extends View {
         text.setLetterSpacing(0);
         text.setTextSize(30);
         text.setColor(0xC7F4F4F1);
-        c.drawText("OK opens an app · Hold OK to add it to Home or remove it · Back returns", 140, 72 + 104, text);
+        c.drawText("OK opens an app · Hold OK to add it to Home, remove it or rename it · Back returns", 140, 72 + 104, text);
         c.save();
         c.clipRect(0, GRID_Y - 16, W, H - 40);
         for (int i = 0; i < all.size(); i++) {
@@ -363,6 +380,44 @@ final class HomeView extends View {
             text.setTextSize(30);
             text.setColor(i == menuIndex ? SOLID_INK : INK);
             c.drawText(MENU_ITEMS[i], x + 40, ry + 42, text);
+        }
+    }
+
+    private String[] appMenuItems() {
+        String home = menuApp.onHome ? "Remove from Home" : "Add to Home";
+        return menuApp.renamed ? new String[] {home, "Rename", "Reset name"} : new String[] {home, "Rename"};
+    }
+
+    private void drawAppMenu(Canvas c) {
+        paint.setColor(0x66040A0C);
+        c.drawRect(0, 0, W, H, paint);
+        String[] items = appMenuItems();
+        float w = 560, rowH = 64, titleH = 76;
+        float h = 24 + titleH + items.length * (rowH + 8) + 16, x = (W - w) / 2, y = (H - h) / 2;
+        rect.set(x, y, x + w, y + h);
+        clip.reset();
+        clip.addRoundRect(rect, 32, 32, Path.Direction.CW);
+        c.save();
+        c.clipPath(clip);
+        drawPhoto(c, dockMaterial != null ? dockMaterial : wallpaper);
+        paint.setColor(0x52080E12);
+        c.drawRect(rect, paint);
+        c.restore();
+        text.setTypeface(semibold);
+        text.setTextSize(30);
+        text.setColor(INK);
+        CharSequence title = TextUtils.ellipsize(menuApp.label, text, w - 80, TextUtils.TruncateAt.END);
+        c.drawText(title, 0, title.length(), x + 40, y + 24 + 42, text);
+        text.setTypeface(medium);
+        for (int i = 0; i < items.length; i++) {
+            float ry = y + 24 + titleH + i * (rowH + 8);
+            if (i == menuIndex) {
+                paint.setColor(SOLID);
+                rect.set(x + 12, ry, x + w - 12, ry + rowH);
+                c.drawRoundRect(rect, 32, 32, paint);
+            }
+            text.setColor(i == menuIndex ? SOLID_INK : INK);
+            c.drawText(items[i], x + 40, ry + 42, text);
         }
     }
 
@@ -420,15 +475,40 @@ final class HomeView extends View {
             return true;
         }
         if (k == KeyEvent.KEYCODE_BACK) return true;
-        if (overlay == OVERLAY_APPS) return gridKey(k) || super.onKeyDown(k, e);
-        if (overlay == OVERLAY_MENU) return menuKey(k) || super.onKeyDown(k, e);
-        return homeKey(k) || super.onKeyDown(k, e);
+        int[] before = focus();
+        boolean handled = overlay == OVERLAY_APPS ? gridKey(k) : overlay == OVERLAY_MENU ? menuKey(k, MENU_ITEMS.length)
+                : overlay == OVERLAY_APP_MENU ? menuKey(k, appMenuItems().length) : homeKey(k);
+        // Focus here isn't Android's view focus, so play its navigation sound when focus moves.
+        if (!Arrays.equals(before, focus())) playSoundEffect(navigationSound(k));
+        return handled || super.onKeyDown(k, e);
+    }
+
+    private int[] focus() {
+        return new int[] {overlay, area, dockIndex, utilIndex, menuIndex, gridIndex};
+    }
+
+    private static int navigationSound(int k) {
+        switch (k) {
+            case KeyEvent.KEYCODE_DPAD_LEFT: return SoundEffectConstants.NAVIGATION_LEFT;
+            case KeyEvent.KEYCODE_DPAD_RIGHT: return SoundEffectConstants.NAVIGATION_RIGHT;
+            case KeyEvent.KEYCODE_DPAD_UP: return SoundEffectConstants.NAVIGATION_UP;
+            default: return SoundEffectConstants.NAVIGATION_DOWN;
+        }
     }
 
     @Override
     public boolean onKeyLongPress(int k, KeyEvent e) {
-        if (isOk(k) && overlay == OVERLAY_APPS && gridIndex < all.size()) {
-            host.toggleOnHome(all.get(gridIndex));
+        App app = null;
+        if (overlay == OVERLAY_APPS && gridIndex < all.size()) app = all.get(gridIndex);
+        else if (overlay == OVERLAY_NONE && area == AREA_DOCK && dockIndex < dock.size()) app = dock.get(dockIndex);
+        if (isOk(k) && app != null) {
+            playSoundEffect(SoundEffectConstants.CLICK);
+            menuApp = app;
+            menuReturn = overlay;
+            menuIndex = 0;
+            overlay = OVERLAY_APP_MENU;
+            status = "";
+            invalidate();
             return true;
         }
         return super.onKeyLongPress(k, e);
@@ -438,11 +518,13 @@ final class HomeView extends View {
     public boolean onKeyUp(int k, KeyEvent e) {
         if (isOk(k)) {
             if (!e.isTracking() || e.isCanceled()) return true;
+            playSoundEffect(SoundEffectConstants.CLICK);
             ok();
             return true;
         }
         if (k == KeyEvent.KEYCODE_BACK) {
-            if (overlay != OVERLAY_NONE) closeOverlays();
+            if (overlay == OVERLAY_APP_MENU) { overlay = menuReturn; invalidate(); }
+            else if (overlay != OVERLAY_NONE) closeOverlays();
             else if (area == AREA_UTILS && !dock.isEmpty()) { area = AREA_DOCK; invalidate(); }
             return true; // a home screen has nothing to go back to
         }
@@ -451,6 +533,17 @@ final class HomeView extends View {
 
     private void ok() {
         status = "";
+        if (overlay == OVERLAY_APP_MENU) {
+            // Close the panel first: each action refreshes the app lists.
+            String item = appMenuItems()[menuIndex];
+            App app = menuApp;
+            overlay = menuReturn;
+            invalidate();
+            if (item.equals("Rename")) host.rename(app);
+            else if (item.equals("Reset name")) host.resetName(app);
+            else host.toggleOnHome(app);
+            return;
+        }
         if (overlay == OVERLAY_APPS) {
             if (gridIndex < all.size()) host.launch(all.get(gridIndex));
             return;
@@ -491,10 +584,10 @@ final class HomeView extends View {
         return false;
     }
 
-    private boolean menuKey(int k) {
+    private boolean menuKey(int k, int items) {
         switch (k) {
             case KeyEvent.KEYCODE_DPAD_UP: if (menuIndex > 0) { menuIndex--; invalidate(); } return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN: if (menuIndex < MENU_ITEMS.length - 1) { menuIndex++; invalidate(); } return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN: if (menuIndex < items - 1) { menuIndex++; invalidate(); } return true;
             case KeyEvent.KEYCODE_DPAD_LEFT: case KeyEvent.KEYCODE_DPAD_RIGHT: return true;
         }
         return false;
@@ -510,11 +603,16 @@ final class HomeView extends View {
             default: return false;
         }
         gridIndex = i;
-        float top = (i / GRID_COLS) * GRID_ROW;
+        scrollGrid();
+        invalidate();
+        return true;
+    }
+
+    // Scrolls All apps so the focused row is on screen.
+    private void scrollGrid() {
+        float top = (gridIndex / GRID_COLS) * GRID_ROW;
         float visible = H - 40 - GRID_Y - GRID_ROW;
         if (top - gridScroll < 0) gridScroll = top;
         if (top - gridScroll > visible) gridScroll = top - visible;
-        invalidate();
-        return true;
     }
 }

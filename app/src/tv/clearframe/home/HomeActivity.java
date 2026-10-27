@@ -1,6 +1,7 @@
 package tv.clearframe.home;
 
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -17,8 +18,12 @@ import android.os.Looper;
 import android.provider.Settings;
 import android.text.TextUtils;
 import android.util.Log;
+import android.view.KeyEvent;
 import android.view.Window;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.widget.EditText;
+import android.widget.FrameLayout;
 
 import java.io.InputStream;
 import java.util.ArrayList;
@@ -33,6 +38,7 @@ public final class HomeActivity extends Activity implements HomeView.Host {
     private static final String TAG = "ClearFrame";
     private static final String PREFS = "home";
     private static final String KEY_APPS = "apps", KEY_WALL = "wallpaper";
+    private static final String NAME_PREFIX = "name:"; // + package: a name the user gave the app
 
     // Wallpapers bundled from CleanFrame, each with its pre-blurred dock material.
     static final String[] WALLPAPERS = {"misty", "cove", "forest", "valley", "night", "bridge"};
@@ -190,8 +196,8 @@ public final class HomeActivity extends Activity implements HomeView.Host {
 
     private HomeView.App app(String pkg, CharSequence fallbackLabel) {
         PackageManager pm = getPackageManager();
-        String label = NAMES.get(pkg);
-        if (label == null) label = fallbackLabel != null ? fallbackLabel.toString() : pkg;
+        String custom = prefs.getString(NAME_PREFIX + pkg, null);
+        String label = custom != null ? custom : defaultName(pkg, fallbackLabel);
         Bitmap mark = null;
         String m = MARKS.get(pkg);
         if (m != null) {
@@ -202,7 +208,19 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         if (mark == null) {
             try { icon = pm.getApplicationIcon(pkg); } catch (PackageManager.NameNotFoundException ignored) { }
         }
-        return new HomeView.App(pkg, label, mark, icon);
+        HomeView.App a = new HomeView.App(pkg, label, mark, icon);
+        a.renamed = custom != null;
+        return a;
+    }
+
+    private String defaultName(String pkg, CharSequence fallbackLabel) {
+        String name = NAMES.get(pkg);
+        if (name != null) return name;
+        if (fallbackLabel == null) {
+            try { fallbackLabel = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(pkg, 0)); }
+            catch (PackageManager.NameNotFoundException e) { return pkg; }
+        }
+        return fallbackLabel.toString();
     }
 
     private void refreshApps() {
@@ -218,7 +236,12 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         }
         List<String> wanted = homeList();
         List<HomeView.App> dock = new ArrayList<>();
-        for (String p : wanted) if (installed.containsKey(p)) dock.add(app(p, installed.get(p)));
+        for (String p : wanted) {
+            if (!installed.containsKey(p)) continue;
+            HomeView.App a = app(p, installed.get(p));
+            a.onHome = true;
+            dock.add(a);
+        }
         List<HomeView.App> all = new ArrayList<>();
         for (Map.Entry<String, CharSequence> e : installed.entrySet()) {
             HomeView.App a = app(e.getKey(), e.getValue());
@@ -250,6 +273,56 @@ public final class HomeActivity extends Activity implements HomeView.Host {
         prefs.edit().putString(KEY_APPS, TextUtils.join(",", list)).apply();
         refreshApps();
         view.showStatus(list.contains(app.pkg) ? app.label + " added to Home" : app.label + " removed from Home");
+    }
+
+    // Names live only in ClearFrame: Android doesn't let one app rename another.
+    @Override
+    public void rename(final HomeView.App app) {
+        // Starts empty with the current name as a hint: typing on a TV keyboard then gives the whole
+        // new name, with no old text to delete letter by letter.
+        final EditText field = new EditText(this);
+        field.setSingleLine(true);
+        field.setHint(app.label);
+        field.setImeOptions(EditorInfo.IME_ACTION_DONE);
+        FrameLayout box = new FrameLayout(this);
+        int pad = Math.round(24 * getResources().getDisplayMetrics().density);
+        box.setPadding(pad, 0, pad, 0);
+        box.addView(field);
+        final AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle("Rename " + app.label)
+                .setView(box)
+                .setPositiveButton("Save", (d, w) -> saveName(app, field.getText().toString()))
+                .setNegativeButton("Cancel", null)
+                .create();
+        // The on-screen keyboard sends DONE; a hardware Enter arrives as IME_NULL with its key event.
+        field.setOnEditorActionListener((v, action, e) -> {
+            boolean enter = action == EditorInfo.IME_NULL && e != null && e.getAction() == KeyEvent.ACTION_DOWN;
+            if (action != EditorInfo.IME_ACTION_DONE && !enter) return false;
+            saveName(app, field.getText().toString());
+            dialog.dismiss();
+            return true;
+        });
+        dialog.setOnDismissListener(d -> view.requestFocus());
+        dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        dialog.show();
+    }
+
+    private void saveName(HomeView.App app, String name) {
+        name = name.trim();
+        if (name.isEmpty()) return; // nothing typed: keep the name
+        if (name.equals(defaultName(app.pkg, null))) { resetName(app); return; }
+        prefs.edit().putString(NAME_PREFIX + app.pkg, name).apply();
+        Log.i(TAG, "renamed " + app.pkg + " -> " + name);
+        refreshApps();
+        view.showStatus("Renamed to " + name);
+    }
+
+    @Override
+    public void resetName(HomeView.App app) {
+        prefs.edit().remove(NAME_PREFIX + app.pkg).apply();
+        Log.i(TAG, "name reset " + app.pkg);
+        refreshApps();
+        view.showStatus("Name reset to " + defaultName(app.pkg, null));
     }
 
     @Override
