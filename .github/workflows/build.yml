@@ -4,8 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+# Read-only by default; only the jobs that publish get write access.
 permissions:
-  contents: write
+  contents: read
 
 env:
   # SHA-256 of the permanent signing certificate (public, not a secret). Releases must match it,
@@ -52,9 +53,12 @@ jobs:
   release:
     # Publishes the APK that passed the emulator check at a fixed link the TV can download:
     # https://github.com/<owner>/ClearFrameTV/releases/download/latest/clearframe.apk
+    # Only from main, so only merged code reaches the TV; branch builds stay in the run's artifacts.
     needs: [apk, emulator]
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/claude/clearframe-launcher'
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
@@ -89,7 +93,8 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
       - name: Android TV 8.0 emulator
-        uses: reactivecircus/android-emulator-runner@v2
+        # Third-party action: pinned to a commit (v2.38.0); Dependabot proposes updates.
+        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
         with:
           api-level: 26
           target: android-tv
@@ -103,8 +108,22 @@ jobs:
         with:
           name: emulator-screenshots
           path: screenshots
+
+  screenshots:
+    # A separate job, so the third-party emulator action above never holds a write token.
+    needs: emulator
+    if: always() && needs.emulator.result != 'skipped'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: emulator-screenshots
+          path: screenshots
       - name: Publish screenshots to the ci-screenshots branch
-        if: always()
         run: |
           [ -d screenshots ] || exit 0
           git config user.name "github-actions"; git config user.email "github-actions@users.noreply.github.com"
