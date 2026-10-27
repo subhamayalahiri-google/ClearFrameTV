@@ -24,7 +24,7 @@ Not yet: reordering the dock.
 1. On the TV: Settings → Device Preferences → About → press OK on Build 7 times. Then Developer options → turn on ADB debugging.
 2. Install Downloader (by AFTVnews) from the Play Store, allow it to install unknown apps, and open
    `is.gd/clearframetv`. It redirects to
-   `https://github.com/subhamayalahiri-google/ClearFrameTV/releases/download/latest/clearframe.apk`, which always serves the newest build.
+   `https://github.com/subhamayalahiri-google/ClearFrameTV/releases/download/latest/clearframe.apk`, which always serves the newest build of `main` that passed the emulator check.
 3. Open ClearFrame from the TV's apps, go Up → Settings → Clean up TV. Accept "Allow USB debugging?" (tick Always allow).
 4. Choose Make ClearFrame the Home screen and press OK twice. Then turn off apps a few at a time, checking the TV still works.
 
@@ -32,7 +32,7 @@ If something goes wrong: Clean up TV → Turn everything back on, or TV Settings
 
 ## Build
 
-GitHub Actions builds `clearframe.apk` on every push (see the run's `clearframe-apk` artifact). It also installs the APK on an Android TV 8.0 emulator and saves screenshots to the `ci-screenshots` branch.
+GitHub Actions builds `clearframe.apk` on every push (see the run's `clearframe-apk` artifact). It also installs the APK on an Android TV 8.0 emulator and saves screenshots to the `ci-screenshots` branch. Only `main` updates the `latest` release; other branches leave their APK in the run's artifacts.
 
 Locally: Java 17, Android SDK `platforms;android-34` and `build-tools;34.0.0`, then `sh build.sh`.
 
@@ -41,3 +41,7 @@ Releases are signed with one permanent key, so each update installs over the las
 ## Credits
 
 Design, wallpapers and icons from CleanFrame by Nathan Clark (MIT). Build approach and clean-up rules from [TV Detox](https://github.com/Ansub/tv-detox) by Ansub Khan (MIT). Full list in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## License
+
+ClearFrameTV's own code is [MIT](LICENSE). Bundled third-party material keeps its own license; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
