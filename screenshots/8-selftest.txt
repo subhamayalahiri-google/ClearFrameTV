@@ -1,0 +1,26 @@
+--------- beginning of system
+--------- beginning of main
+10-27 02:33:38.784  3312  3312 I ClearFrame: extras apps=null selftest=true
+10-27 02:33:38.789  3312  3312 I ClearFrame: dock [com.google.android.youtube.tv, com.lego.android.tvleanback, com.netflix.ninja] -> 1 shown, 1 apps installed
+10-27 02:33:39.062  3312  3891 E ClearFrame: SELFTEST fail java.net.ConnectException: failed to connect to /127.0.0.1 (port 5555) from /127.0.0.1 (port 41109) after 4000ms: isConnected failed: ECONNREFUSED (Connection refused)
+10-27 02:33:39.062  3312  3891 E ClearFrame: java.net.ConnectException: failed to connect to /127.0.0.1 (port 5555) from /127.0.0.1 (port 41109) after 4000ms: isConnected failed: ECONNREFUSED (Connection refused)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at libcore.io.IoBridge.isConnected(IoBridge.java:273)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at libcore.io.IoBridge.connectErrno(IoBridge.java:188)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at libcore.io.IoBridge.connect(IoBridge.java:130)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.PlainSocketImpl.socketConnect(PlainSocketImpl.java:129)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.AbstractPlainSocketImpl.doConnect(AbstractPlainSocketImpl.java:356)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.AbstractPlainSocketImpl.connectToAddress(AbstractPlainSocketImpl.java:200)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.AbstractPlainSocketImpl.connect(AbstractPlainSocketImpl.java:182)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.SocksSocketImpl.connect(SocksSocketImpl.java:356)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.net.Socket.connect(Socket.java:616)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at tv.clearframe.home.AdbClient.open(AdbClient.java:116)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at tv.clearframe.home.AdbClient.connect(AdbClient.java:84)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at tv.clearframe.home.AdbClient.connect(AdbClient.java:79)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at tv.clearframe.home.CleanupActivity.lambda$selfTest$29$tv-clearframe-home-CleanupActivity(CleanupActivity.java:584)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at tv.clearframe.home.CleanupActivity$$ExternalSyntheticLambda20.run(Unknown Source:2)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1162)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:636)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at java.lang.Thread.run(Thread.java:764)
+10-27 02:33:39.062  3312  3891 E ClearFrame: Caused by: android.system.ErrnoException: isConnected failed: ECONNREFUSED (Connection refused)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	at libcore.io.IoBridge.isConnected(IoBridge.java:262)
+10-27 02:33:39.062  3312  3891 E ClearFrame: 	... 16 more

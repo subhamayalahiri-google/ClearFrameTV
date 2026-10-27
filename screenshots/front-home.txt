@@ -1,0 +1,1 @@
+  mCurrentFocus=Window{a11558f u0 tv.clearframe.home/tv.clearframe.home.HomeActivity}

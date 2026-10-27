@@ -1,0 +1,1 @@
+10-27 02:33:39.062  3312  3891 E ClearFrame: SELFTEST fail java.net.ConnectException: failed to connect to /127.0.0.1 (port 5555) from /127.0.0.1 (port 41109) after 4000ms: isConnected failed: ECONNREFUSED (Connection refused)

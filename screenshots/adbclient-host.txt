@@ -1,0 +1,6 @@
+CONNECTED
+sdk=26
+home=priority=0 preferredOrder=0 match=0x108000 specificIndex=-1 isDefault=true tv.clearframe.home/.HomeActivity
+packages=66
+flags-sample=  Package [com.android.cts.priv.ctsshim] (b226da6):|    pkgFlags=[ SYSTEM ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]|  Package [com.google.android.ext.services] (df7be32):|    pkgFlags=[ SYSTEM HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]|
+ADB_CLIENT_OK

@@ -1,0 +1,4 @@
+--------- beginning of main
+--------- beginning of system
+10-27 02:33:15.553  3312  3312 I ClearFrame: extras apps=com.google.android.youtube.tv,com.lego.android.tvleanback,com.netflix.ninja selftest=false
+10-27 02:33:15.558  3312  3312 I ClearFrame: dock [com.google.android.youtube.tv, com.lego.android.tvleanback, com.netflix.ninja] -> 1 shown, 1 apps installed

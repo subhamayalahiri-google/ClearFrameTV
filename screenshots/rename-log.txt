@@ -1,0 +1,6 @@
+--------- beginning of main
+--------- beginning of system
+10-27 02:33:30.755  3312  3312 I ClearFrame: renamed com.lego.android.tvleanback -> Movies
+10-27 02:33:30.757  3312  3312 I ClearFrame: dock [com.google.android.youtube.tv, com.lego.android.tvleanback, com.netflix.ninja] -> 1 shown, 1 apps installed
+10-27 02:33:35.312  3312  3312 I ClearFrame: name reset com.lego.android.tvleanback
+10-27 02:33:35.314  3312  3312 I ClearFrame: dock [com.google.android.youtube.tv, com.lego.android.tvleanback, com.netflix.ninja] -> 1 shown, 1 apps installed

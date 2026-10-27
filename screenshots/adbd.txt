@@ -1,0 +1,3 @@
+ro.adb.secure=
+service.adb.tcp.port=
+listening on 5555: 0
